@@ -63,7 +63,7 @@ class Validator(BaseValidatorNeuron):
         if not openai_key and not togetherai_key:
             bt.logging.warning("OPENAI_API_KEY or TOGETHERAI_API_KEY is not set. Please set it to use OpenAI or TogetherAI.")
             raise ValueError("OPENAI_API_KEY or TOGETHERAI_API_KEY is not set. Please set it to use OpenAI or TogetherAI and restart the validator.")
-        
+
         base_urls = self.config.llm_client.base_urls.split(",")
         models = self.config.llm_client.models.split(",")
 
@@ -79,49 +79,49 @@ class Validator(BaseValidatorNeuron):
             raise ValueError(
                 "base_urls or models configuration is incomplete. Please ensure they have at least 1 entry."
             )
-        
-        self.model_rotation_pool = {
-            # "vllm": [base_urls[0].strip(), "xyz", models[0]],
-            "openai": [base_urls[1].strip(), openai_key, models[1]],
-            # "togetherai": [base_urls[2].strip(), togetherai_key, models[2]],
-        }
+
+        # self.model_rotation_pool = {
+        #     # "vllm": [base_urls[0].strip(), "xyz", models[0]],
+        #     "openai": [base_urls[1].strip(), openai_key, models[1]],
+        #     # "togetherai": [base_urls[2].strip(), togetherai_key, models[2]],
+        # }
         # for key, value in self.model_rotation_pool.items():
         #     if value[2] in model_blacklist:
         #         bt.logging.warning(f"Model {value[2]} is blacklisted. Please use another model.")
         #         self.model_rotation_pool[key] = "no use"
-        
-        # Immediately blacklist if it's not "gpt-4o" and force it to be "gpt-4o"
-        if "gpt-4o" not in self.model_rotation_pool["openai"][2]:
-            bt.logging.warning(
-                f"Model must be gpt-4o. Found {self.model_rotation_pool['openai'][2]} instead."
-            )
-            bt.logging.info("Setting OpenAI model to gpt-4o.")
-            self.model_rotation_pool["openai"][2] = "gpt-4o"
-        
-        # Check if 'null' is at the same index in both cli lsts
-        for i in range(3):
-            if base_urls[i].strip() == 'null' or models[i].strip() == 'null':
-                if i == 0:
-                    self.model_rotation_pool["vllm"] = "no use"
-                elif i == 1:
-                    self.model_rotation_pool["openai"] = "no use"
-                elif i == 2:
-                    self.model_rotation_pool["togetherai"] = "no use"
-        
-        # Check if all models are set to "no use"
-        if all(value == "no use" for value in self.model_rotation_pool.values()):
-            bt.logging.warning("All models are set to 'no use'. Validator cannot proceed.")
-            raise ValueError("All models are set to 'no use'. Please configure at least one model and restart the validator.")
-        
-        # Create a model_rotation_pool_without_keys
-        model_rotation_pool_without_keys = {
-            key: "no use" if value == "no use" else [value[0], "Not allowed to see.", value[2]]
-            if key in ["openai", "togetherai"] else value
-            for key, value in self.model_rotation_pool.items()
-        }
-        bt.logging.info(f"Model rotation pool without keys: {model_rotation_pool_without_keys}")
 
-        self.categories = init_category(self.config, self.model_rotation_pool, self.config.dataset_weight)
+        # Immediately blacklist if it's not "gpt-4o-mini" and force it to be "gpt-4o-mini"
+        # if "gpt-4o-mini" not in self.model_rotation_pool["openai"][2]:
+        #     bt.logging.warning(
+        #         f"Model must be gpt-4o. Found {self.model_rotation_pool['openai'][2]} instead."
+        #     )
+        #     bt.logging.info("Setting OpenAI model to gpt-4o.")
+        #     self.model_rotation_pool["openai"][2] = "gpt-4o-mini"
+
+        # # Check if 'null' is at the same index in both cli lsts
+        # for i in range(3):
+        #     if base_urls[i].strip() == 'null' or models[i].strip() == 'null':
+        #         if i == 0:
+        #             self.model_rotation_pool["vllm"] = "no use"
+        #         elif i == 1:
+        #             self.model_rotation_pool["openai"] = "no use"
+        #         elif i == 2:
+        #             self.model_rotation_pool["togetherai"] = "no use"
+
+        # # Check if all models are set to "no use"
+        # if all(value == "no use" for value in self.model_rotation_pool.values()):
+        #     bt.logging.warning("All models are set to 'no use'. Validator cannot proceed.")
+        #     raise ValueError("All models are set to 'no use'. Please configure at least one model and restart the validator.")
+
+        # # Create a model_rotation_pool_without_keys
+        # model_rotation_pool_without_keys = {
+        #     key: "no use" if value == "no use" else [value[0], "Not allowed to see.", value[2]]
+        #     if key in ["openai", "togetherai"] else value
+        #     for key, value in self.model_rotation_pool.items()
+        # }
+        # bt.logging.info(f"Model rotation pool without keys: {model_rotation_pool_without_keys}")
+
+        self.categories = init_category(self.config, {}, self.config.dataset_weight)
         self.miner_manager = MinerManager(self)
         self.load_state()
         self.update_scores_on_chain()
@@ -185,6 +185,7 @@ class Validator(BaseValidatorNeuron):
             bt.logging.info(
                 f"\033[1;34m🔍 Querying {len(uids)} uids for model {category}, sleep_per_batch: {sleep_per_batch}\033[0m"
             )
+            sleep_per_batch = 2
             thread = threading.Thread(
                 target=self.async_query_and_reward,
                 args=(category, uids, should_rewards),
@@ -194,12 +195,13 @@ class Validator(BaseValidatorNeuron):
             bt.logging.info(
                 f"\033[1;34m😴 Sleeping for {sleep_per_batch} seconds between batches\033[0m"
             )
+            sleep_per_batch = 2
             time.sleep(sleep_per_batch)
 
         # Wait for all threads to complete
         for thread in threads:
             thread.join()
-        
+
         # # Wait for all submitted tasks to complete
         # for future, category, uids, should_rewards in as_completed(futures_with_metadata):
         #     try:
@@ -209,21 +211,20 @@ class Validator(BaseValidatorNeuron):
         #         bt.logging.warning(f"\033[1;33m⚠️ Task failed with error: {exc}\nFuture: {future}\nCategory: {category}\nUids: {uids}\nShould rewards: {should_rewards}\033[0m")
 
         # Assign incentive rewards
-        self.assign_incentive_rewards(self.miner_uids, self.miner_scores, self.miner_reward_logs)
+        # self.assign_incentive_rewards(self.miner_uids, self.miner_scores, self.miner_reward_logs)
 
-        # Update scores on chain
-        self.update_scores_on_chain()
-        self.save_state()
-        self.store_miner_infomation()
+        # # Update scores on chain
+        # self.update_scores_on_chain()
+        # self.save_state()
+        # self.store_miner_infomation()
 
-        actual_time_taken = time.time() - loop_start
+        # actual_time_taken = time.time() - loop_start
 
-        if actual_time_taken < loop_base_time:
-            bt.logging.info(
-                f"\033[1;34m😴 Sleeping for {loop_base_time - actual_time_taken} seconds\033[0m"
-            )
-            time.sleep(loop_base_time - actual_time_taken)
-
+        # if actual_time_taken < loop_base_time:
+        #     bt.logging.info(
+        #         f"\033[1;34m😴 Sleeping for {loop_base_time - actual_time_taken} seconds\033[0m"
+        #     )
+        #     time.sleep(5)
 
     def async_query_and_reward(
         self,
@@ -240,7 +241,7 @@ class Validator(BaseValidatorNeuron):
         synapses, batched_uids_should_rewards = self.prepare_challenge(
             uids_should_rewards, category
         )
-        
+
         for synapse, uids_should_rewards in zip(synapses, batched_uids_should_rewards):
             uids, should_rewards = zip(*uids_should_rewards)
             if not synapse:
@@ -332,7 +333,7 @@ class Validator(BaseValidatorNeuron):
         # Convert them into lists for processing
         final_uids = list(uids_scores.keys())
         representative_logs = [logs[0] for logs in uids_logs.values()] 
-               
+
         ## compute mean value of rewards
         final_rewards = [sum(uid_rewards) / len(uid_rewards) for uid_rewards in uids_scores.values()]
         ## set the rewards to 0 if the mean is negative
@@ -341,10 +342,10 @@ class Validator(BaseValidatorNeuron):
         # Now proceed with the incentive rewards calculation on these mean attempts
         original_rewards = list(enumerate(final_rewards))
         # Sort and rank as before, but now we're dealing with mean attempts.
-        
+
         # Sort rewards in descending order based on the score
         sorted_rewards = sorted(original_rewards, key=lambda x: x[1], reverse=True)
-        
+
         # Calculate ranks, handling ties
         ranks = []
         previous_score = None
@@ -353,7 +354,7 @@ class Validator(BaseValidatorNeuron):
             rank = i + 1 if score != previous_score else rank
             ranks.append((reward_id, rank, score))
             previous_score = score
-        
+
         # Restore the original order
         ranks.sort(key=lambda x: x[0])
 
@@ -363,13 +364,13 @@ class Validator(BaseValidatorNeuron):
             # Scale up the reward value between 0 and 1
             scaled_reward_value = reward_value + 1
             return scaled_reward_value
-        
+
         incentive_rewards = [
             (incentive_formula(rank) if score > 0 else 0) for _, rank, score in ranks
         ]
-        
+
         self.miner_manager.update_scores(final_uids, incentive_rewards, representative_logs)
-        
+
         # Reset logs for next epoch
         self.miner_scores = []
         self.miner_reward_logs = []
@@ -485,14 +486,13 @@ class Validator(BaseValidatorNeuron):
             self.step = 0  # Default fallback in case of an unknown error
             bt.logging.error(f"Error loading state: {e}")
 
-
     def store_miner_infomation(self):
         miner_informations = self.miner_manager.to_dict()
 
         def _post_miner_informations(miner_informations):
             # Convert miner_informations to a JSON-serializable format
             serializable_miner_informations = convert_to_serializable(miner_informations)
-            
+
             try:
                 response = requests.post(
                     url=self.config.storage.storage_url,

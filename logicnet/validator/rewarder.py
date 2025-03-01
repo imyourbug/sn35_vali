@@ -224,41 +224,41 @@ class LogicRewarder:
         if response.strip() == ";":
             return 0.0
         ## check trick case
-        try:
-            ## check with hard rule
-            strings = ['a', 'b', 'c', 'd', 'e'] ## add to response to avoid gpt cached the output
-            cheat_words = ["miner_answer", "<example>", "</", "preference>", "<preference"]
-            for cheat_word in cheat_words:
-                if cheat_word in response.lower():
-                    return -1
+        # try:
+        #     ## check with hard rule
+        #     strings = ['a', 'b', 'c', 'd', 'e'] ## add to response to avoid gpt cached the output
+        #     cheat_words = ["miner_answer", "<example>", "</", "preference>", "<preference"]
+        #     for cheat_word in cheat_words:
+        #         if cheat_word in response.lower():
+        #             return -1
                 
-            clone_response = self.clean_response(response)
-            clone_response = str(random.choice(strings)) + clone_response + str(random.choice(strings))
-            response_str = openai_client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": DETECT_TRICK_TEMPLATE.format(
-                            response=clone_response
-                        ),
-                    },
-                ],
-                max_tokens=25,
-                temperature=0,
-            ).choices[0].message.content.strip().lower()
-            bt.logging.info(f"[CORRECTNESS] Trick detection: {response_str} ====> {response[:100]}")
-            if "yes" in response_str:
-                return -1
-        except Exception as e:
-            bt.logging.error(f"API request failed: {e}")
+        #     clone_response = self.clean_response(response)
+        #     clone_response = str(random.choice(strings)) + clone_response + str(random.choice(strings))
+        #     response_str = openai_client.chat.completions.create(
+        #         model="gpt-4o-mini",
+        #         messages=[
+        #             {
+        #                 "role": "user",
+        #                 "content": DETECT_TRICK_TEMPLATE.format(
+        #                     response=clone_response
+        #                 ),
+        #             },
+        #         ],
+        #         max_tokens=25,
+        #         temperature=0,
+        #     ).choices[0].message.content.strip().lower()
+        #     bt.logging.info(f"[CORRECTNESS] Trick detection: {response_str} ====> {response[:100]}")
+        #     if "yes" in response_str:
+        #         return -1
+        # except Exception as e:
+        #     bt.logging.error(f"API request failed: {e}")
         
         try:
             if len(response.split()) < 20:
                 extraced_miner_answer = response
             else:
                 extraced_miner_answer = openai_client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-4o-mini",
                     messages=[
                         {
                             "role": "user",

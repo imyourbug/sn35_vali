@@ -107,7 +107,7 @@ class QueryQueue:
                         self.synthentic_rewarded[query_item.uid] = 0
                     self.synthentic_rewarded[query_item.uid] += 1
 
-                yield category, uids_to_query, should_rewards, time_to_sleep
+                yield category, [84], should_rewards, time_to_sleep
 
     def random_should_reward(self, uid):
         if uid not in self.synthentic_rewarded or self.synthentic_rewarded[uid] < 2:
